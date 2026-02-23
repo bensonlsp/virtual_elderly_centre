@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}{{ '編輯暫託' if record else '新增暫託申請' }} – 長者中心 CRM{% endblock %}
+{% block page_title %}{{ '編輯暫託申請' if record else '新增暫託申請' }}{% endblock %}
+
+{% block content %}
+<div class="max-w-lg mx-auto">
+    <a href="/respite/" class="btn btn-sm btn-ghost mb-6">返回</a>
+
+    <form method="POST" action="{{ action }}" class="card bg-base-100 shadow-md">
+        <div class="card-body space-y-4">
+            <div class="form-control">
+                <label class="label"><span class="label-text font-medium">會員 <span
+                            class="text-error">*</span></span></label>
+                <select name="member_id" class="select select-bordered" required>
+                    <option value="">── 選擇會員 ──</option>
+                    {% for m in members %}
+                    <option value="{{ m.id }}" {% if record and record.member_id==m.id %}selected{% endif %}>
+                        {{ m.name_zh }} ({{ m.phone or '–' }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-control">
+                <label class="label"><span class="label-text font-medium">日期 <span
+                            class="text-error">*</span></span></label>
+                <input type="date" name="date_str" class="input input-bordered" required
+                    value="{{ record.date.strftime('%Y-%m-%d') if record else '' }}" />
+            </div>
+
+            <div class="form-control">
+                <label class="label"><span class="label-text font-medium">時段 <span
+                            class="text-error">*</span></span></label>
+                <select name="session" class="select select-bordered" required>
+                    {% for s in SessionType %}
+                    <option value="{{ s.value }}" {% if record and record.session==s %}selected{% endif %}>{{ s.value }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-control">
+                <label class="label"><span class="label-text font-medium">狀態</span></label>
+                <select name="status" class="select select-bordered">
+                    {% for s in RespiteStatus %}
+                    <option value="{{ s.value }}" {% if record and record.status==s %}selected{% endif %}>{{ s.value }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-control">
+                <label class="label"><span class="label-text font-medium">備註</span></label>
+                <textarea name="notes" class="textarea textarea-bordered" rows="3"
+                    placeholder="特殊需要、注意事項…">{{ record.notes if record else '' }}</textarea>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-2">
+                <a href="/respite/" class="btn btn-ghost">取消</a>
+                <button type="submit" class="btn btn-primary">{{ '儲存更改' if record else '提交申請' }}</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

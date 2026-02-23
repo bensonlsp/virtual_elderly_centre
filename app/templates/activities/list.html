@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}活動管理 – 長者中心 CRM{% endblock %}
+{% block page_title %}活動管理{% endblock %}
+
+{% block content %}
+<!-- Toolbar -->
+<div class="flex flex-col sm:flex-row gap-3 mb-6 items-start sm:items-center justify-between">
+    <div class="flex gap-3 flex-wrap">
+        <select class="select select-bordered select-sm"
+            onchange="window.location.href='/activities/?type='+this.value+'&status={{ status }}'">
+            <option value="all" {% if type=='all' %}selected{% endif %}>所有類型</option>
+            {% for t in ActivityType %}
+            <option value="{{ t.value }}" {% if type==t.value %}selected{% endif %}>{{ t.value }}</option>
+            {% endfor %}
+        </select>
+        <select class="select select-bordered select-sm"
+            onchange="window.location.href='/activities/?type={{ type }}&status='+this.value">
+            <option value="all" {% if status=='all' %}selected{% endif %}>所有狀態</option>
+            {% for s in ActivityStatus %}
+            <option value="{{ s.value }}" {% if status==s.value %}selected{% endif %}>{{ s.value }}</option>
+            {% endfor %}
+        </select>
+        <span class="text-sm text-base-content/50 self-center">共 {{ total }} 筆</span>
+    </div>
+    <a href="/activities/new" class="btn btn-primary btn-sm gap-2">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        新增活動
+    </a>
+</div>
+
+<!-- Cards grid -->
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+    {% for act in activities %}
+    <div class="card bg-base-100 shadow-md hover:shadow-lg transition-shadow">
+        <div class="card-body p-5">
+            <div class="flex items-start justify-between gap-2">
+                <h3 class="font-bold text-base leading-tight flex-1">{{ act.name }}</h3>
+                <span class="badge badge-sm flex-shrink-0
+          {% if act.status.value == '已完成' %}badge-ghost
+          {% elif act.status.value == '進行中' %}badge-warning
+          {% elif act.status.value == '已取消' %}badge-error
+          {% else %}badge-primary{% endif %}">{{ act.status.value }}</span>
+            </div>
+            <div class="mt-2 space-y-1.5 text-sm text-base-content/60">
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                    </svg>
+                    {{ act.type.value }}
+                </div>
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    {{ act.datetime_start.strftime('%Y-%m-%d %H:%M') }}
+                </div>
+                <div class="flex items-center gap-2">
+                    <svg class="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    {{ act.location or '未定' }}
+                </div>
+            </div>
+            <!-- Capacity bar -->
+            <div class="mt-3">
+                <div class="flex justify-between text-xs text-base-content/50 mb-1">
+                    <span>報名人數</span>
+                    <span>{{ act.registered_count }}/{{ act.capacity }}</span>
+                </div>
+                <progress class="progress progress-primary h-1.5 w-full" value="{{ act.registered_count }}"
+                    max="{{ act.capacity }}"></progress>
+            </div>
+            <div class="card-actions justify-between items-center mt-3 pt-3 border-t border-base-200">
+                <span
+                    class="text-sm font-semibold {% if act.fee == 0 %}text-success{% else %}text-base-content{% endif %}">
+                    {{ '免費' if act.fee == 0 else '$%.0f' % act.fee }}
+                </span>
+                <a href="/activities/{{ act.id }}" class="btn btn-xs btn-primary">查看詳情</a>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-span-3 text-center py-20 text-base-content/40">
+        <svg class="w-16 h-16 mx-auto mb-3 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        <p>找不到相關活動</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

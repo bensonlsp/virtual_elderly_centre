@@ -1,0 +1,87 @@
+<!-- Partial: activity detail (loaded into modal via HTMX) -->
+<div class="flex items-start gap-2 flex-wrap mb-1">
+    <h3 class="font-bold text-lg leading-tight">{{ act.name }}</h3>
+    <span class="badge badge-outline badge-sm mt-0.5">{{ act.type.value }}</span>
+</div>
+
+<div class="flex items-center gap-2 mb-4">
+    <span class="badge badge-sm
+        {% if act.status.value == '已完成' %}badge-success
+        {% elif act.status.value == '進行中' %}badge-warning
+        {% elif act.status.value == '已取消' %}badge-error
+        {% else %}badge-primary{% endif %}">{{ act.status.value }}</span>
+    <span class="text-xs text-base-content/50">
+        {{ act.registered_count }}/{{ act.capacity }} 人報名
+        {% if act.remaining_slots > 0 %}· 剩 {{ act.remaining_slots }} 位{% else %}· 已滿{% endif %}
+    </span>
+</div>
+
+<!-- Info grid -->
+<div class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm mb-4">
+    <div>
+        <p class="text-xs text-base-content/50 mb-0.5">日期時間</p>
+        <p class="font-medium">{{ act.datetime_start.strftime('%Y-%m-%d %H:%M') }}
+            {% if act.datetime_end %}<span class="text-base-content/50">– {{ act.datetime_end.strftime('%H:%M') }}</span>{% endif %}
+        </p>
+    </div>
+    <div>
+        <p class="text-xs text-base-content/50 mb-0.5">地點</p>
+        <p class="font-medium">{{ act.location or '–' }}</p>
+    </div>
+    <div>
+        <p class="text-xs text-base-content/50 mb-0.5">費用</p>
+        <p class="font-medium">{% if act.fee and act.fee > 0 %}${{ "%.0f"|format(act.fee) }}{% else %}免費{% endif %}</p>
+    </div>
+    <div>
+        <p class="text-xs text-base-content/50 mb-0.5">容額</p>
+        <p class="font-medium">{{ act.capacity }} 人</p>
+    </div>
+</div>
+
+{% if act.description %}
+<p class="text-sm text-base-content/70 bg-base-200 rounded-lg px-3 py-2 mb-4">{{ act.description }}</p>
+{% endif %}
+
+<div class="divider my-3 text-xs text-base-content/40">報名名單</div>
+
+<!-- Registrations by status -->
+{% if registered %}
+<p class="text-xs font-semibold text-primary mb-1.5">已報名（{{ registered|length }}）</p>
+<div class="flex flex-wrap gap-1.5 mb-3">
+    {% for r in registered %}
+    <a href="/members/{{ r.member_id }}" class="badge badge-outline badge-sm hover:badge-primary transition-colors">
+        {{ r.member.name_zh }}
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if attended %}
+<p class="text-xs font-semibold text-success mb-1.5">已出席（{{ attended|length }}）</p>
+<div class="flex flex-wrap gap-1.5 mb-3">
+    {% for r in attended %}
+    <a href="/members/{{ r.member_id }}" class="badge badge-success badge-sm badge-outline hover:badge-success transition-colors">
+        {{ r.member.name_zh }}
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if absent %}
+<p class="text-xs font-semibold text-error mb-1.5">缺席（{{ absent|length }}）</p>
+<div class="flex flex-wrap gap-1.5 mb-3">
+    {% for r in absent %}
+    <a href="/members/{{ r.member_id }}" class="badge badge-error badge-sm badge-outline">
+        {{ r.member.name_zh }}
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if not registered and not attended and not absent %}
+<p class="text-center text-sm text-base-content/40 py-4">暫無報名記錄</p>
+{% endif %}
+
+<div class="pt-3 mt-2 border-t border-base-300">
+    <a href="/activities/{{ act.id }}" class="btn btn-sm btn-outline w-full">查看完整詳情</a>
+</div>

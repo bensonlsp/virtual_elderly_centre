@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+{% block title %}暫託服務 – 長者中心 CRM{% endblock %}
+{% block page_title %}暫託服務{% endblock %}
+
+{% block content %}
+<!-- Monthly Calendar Card -->
+<div class="card bg-base-100 shadow-md mb-6">
+    <div class="card-body pb-4">
+
+        <!-- Month Navigation -->
+        <div class="flex items-center justify-between mb-4">
+            <a href="/respite/?year={{ prev_year }}&month={{ prev_month }}"
+                class="btn btn-sm btn-ghost gap-1">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                </svg>
+                上月
+            </a>
+
+            <h3 class="font-bold text-lg">{{ year }}年 {{ month_name }}</h3>
+
+            <a href="/respite/?year={{ next_year }}&month={{ next_month }}"
+                class="btn btn-sm btn-ghost gap-1">
+                下月
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+            </a>
+        </div>
+
+        <!-- Legend -->
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-base-content/60 mb-3 justify-end">
+            <div class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm bg-base-200 border border-base-300"></span>空置</div>
+            <div class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm bg-blue-200"></span>有預約</div>
+            <div class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm bg-amber-200"></span>快滿</div>
+            <div class="flex items-center gap-1"><span class="inline-block w-3 h-3 rounded-sm bg-rose-200"></span>已滿</div>
+            <div class="flex items-center gap-1"><span class="inline-block w-2 h-2 rounded-full bg-warning"></span>待處理</div>
+        </div>
+
+        <!-- Day-of-week header -->
+        <div class="grid grid-cols-7 gap-1 mb-1 text-center text-xs font-medium text-base-content/50">
+            {% for dow in ["一", "二", "三", "四", "五", "六", "日"] %}
+            <div class="py-1">{{ dow }}</div>
+            {% endfor %}
+        </div>
+
+        <!-- Calendar Grid -->
+        <div class="grid grid-cols-7 gap-1">
+            {% for week in weeks %}
+            {% for day in week %}
+            {% if day %}
+            <div class="border rounded-lg p-1 min-h-[72px]
+                {% if day.is_today %}border-primary bg-primary/5{% else %}border-base-200 hover:border-base-300{% endif %}">
+
+                <!-- Date number -->
+                <div class="text-right text-xs mb-1
+                    {% if day.is_today %}text-primary font-bold{% else %}text-base-content/40{% endif %}">
+                    {{ day.day }}
+                </div>
+
+                <!-- Morning slot button -->
+                {% set m = day.data.get('morning', {}) %}
+                {% set mac = m.get('approved_count', 0) %}
+                {% set mpc = m.get('pending_count', 0) %}
+                {% set mcap = m.get('capacity', 4) %}
+                <button
+                    hx-get="/respite/day-detail?date_str={{ day.date_str }}&session=morning"
+                    hx-target="#slot-modal-content"
+                    hx-indicator="#modal-spinner"
+                    class="w-full text-left text-xs px-1.5 py-0.5 rounded mb-0.5 flex items-center justify-between gap-1 cursor-pointer transition-opacity hover:opacity-80
+                    {% if mac == 0 and mpc == 0 %}bg-base-200 text-base-content/40
+                    {% elif mac >= mcap %}bg-rose-200 text-rose-800
+                    {% elif mac >= mcap - 1 %}bg-amber-200 text-amber-800
+                    {% else %}bg-blue-200 text-blue-800{% endif %}">
+                    <span class="font-medium">早</span>
+                    <span>{{ mac }}/{{ mcap }}</span>
+                    {% if mpc > 0 %}<span class="w-1.5 h-1.5 rounded-full bg-warning flex-shrink-0"></span>{% endif %}
+                </button>
+
+                <!-- Afternoon slot button -->
+                {% set a = day.data.get('afternoon', {}) %}
+                {% set aac = a.get('approved_count', 0) %}
+                {% set apc = a.get('pending_count', 0) %}
+                {% set acap = a.get('capacity', 4) %}
+                <button
+                    hx-get="/respite/day-detail?date_str={{ day.date_str }}&session=afternoon"
+                    hx-target="#slot-modal-content"
+                    hx-indicator="#modal-spinner"
+                    class="w-full text-left text-xs px-1.5 py-0.5 rounded flex items-center justify-between gap-1 cursor-pointer transition-opacity hover:opacity-80
+                    {% if aac == 0 and apc == 0 %}bg-base-200 text-base-content/40
+                    {% elif aac >= acap %}bg-rose-200 text-rose-800
+                    {% elif aac >= acap - 1 %}bg-amber-200 text-amber-800
+                    {% else %}bg-blue-200 text-blue-800{% endif %}">
+                    <span class="font-medium">下</span>
+                    <span>{{ aac }}/{{ acap }}</span>
+                    {% if apc > 0 %}<span class="w-1.5 h-1.5 rounded-full bg-warning flex-shrink-0"></span>{% endif %}
+                </button>
+
+            </div>
+            {% else %}
+            <div class="min-h-[72px]"></div>
+            {% endif %}
+            {% endfor %}
+            {% endfor %}
+        </div>
+
+    </div>
+</div>
+
+<!-- Toolbar -->
+<div class="flex flex-col sm:flex-row gap-3 mb-5 items-start sm:items-center justify-between">
+    <div class="flex gap-3 flex-wrap items-center">
+        <select class="select select-bordered select-sm"
+            onchange="window.location.href='/respite/?status='+this.value">
+            <option value="all" {% if status=='all' %}selected{% endif %}>所有狀態</option>
+            {% for s in RespiteStatus %}
+            <option value="{{ s.value }}" {% if status==s.value %}selected{% endif %}>{{ s.value }}</option>
+            {% endfor %}
+        </select>
+        <span class="text-sm text-base-content/50">共 {{ total }} 筆</span>
+    </div>
+    <a href="/respite/new" class="btn btn-primary btn-sm gap-2">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        新增申請
+    </a>
+</div>
+
+<!-- Records table -->
+<div class="card bg-base-100 shadow-md">
+    <div class="card-body p-0">
+        <div class="overflow-x-auto">
+            <table class="table table-zebra w-full">
+                <thead>
+                    <tr class="bg-base-200 text-base-content/70 text-sm">
+                        <th>會員</th>
+                        <th>日期</th>
+                        <th>時段</th>
+                        <th>狀態</th>
+                        <th>備註</th>
+                        <th class="text-right">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for rec in records %}
+                    <tr class="hover">
+                        <td>
+                            <a href="/members/{{ rec.member_id }}"
+                                class="link link-hover font-medium text-sm">{{ rec.member.name_zh }}</a>
+                            <p class="text-xs text-base-content/40">{{ rec.member.phone or '' }}</p>
+                        </td>
+                        <td class="text-sm">{{ rec.date.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            <span class="badge badge-outline badge-sm">{{ rec.session.value }}</span>
+                        </td>
+                        <td>
+                            <span class="badge badge-sm
+                                {% if rec.status.value == '已批准' %}badge-success
+                                {% elif rec.status.value == '已拒絕' %}badge-error
+                                {% else %}badge-warning{% endif %}">{{ rec.status.value }}</span>
+                        </td>
+                        <td class="text-xs text-base-content/50 max-w-xs truncate">{{ rec.notes or '–' }}</td>
+                        <td class="text-right">
+                            <div class="flex gap-1 justify-end">
+                                {% if rec.status.value == '待處理' %}
+                                <form method="POST" action="/respite/{{ rec.id }}/approve">
+                                    <button class="btn btn-xs btn-success">批准</button>
+                                </form>
+                                {% endif %}
+                                <a href="/respite/{{ rec.id }}/edit" class="btn btn-xs btn-ghost">編輯</a>
+                                <form method="POST" action="/respite/{{ rec.id }}/delete"
+                                    onsubmit="return confirm('確定刪除此記錄？')">
+                                    <button class="btn btn-xs btn-ghost text-error">刪除</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center py-12 text-base-content/40">暫無暫託記錄</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if total_pages > 1 %}
+        <div class="py-3 text-center text-sm text-base-content/40">
+            第 {{ page }}/{{ total_pages }} 頁
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Slot Detail Modal -->
+<dialog id="slot-modal" class="modal modal-bottom sm:modal-middle">
+    <div class="modal-box max-w-md">
+        <div class="flex items-center justify-between mb-4">
+            <span class="loading loading-spinner loading-sm htmx-indicator text-primary" id="modal-spinner"></span>
+        </div>
+        <div id="slot-modal-content"></div>
+        <div class="modal-action mt-4">
+            <form method="dialog">
+                <button class="btn btn-sm">關閉</button>
+            </form>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop">
+        <button>close</button>
+    </form>
+</dialog>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Open modal after HTMX loads slot detail content
+    document.body.addEventListener('htmx:afterSwap', function (evt) {
+        if (evt.detail.target && evt.detail.target.id === 'slot-modal-content') {
+            document.getElementById('slot-modal').showModal();
+        }
+    });
+</script>
+{% endblock %}

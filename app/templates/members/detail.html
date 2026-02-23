@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+{% block title %}{{ member.name_zh }} – 會員詳情{% endblock %}
+{% block page_title %}會員詳情{% endblock %}
+
+{% block content %}
+<!-- Back + actions -->
+<div class="flex items-center justify-between mb-6">
+    <a href="/members/" class="btn btn-sm btn-ghost gap-1">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        返回列表
+    </a>
+    <div class="flex gap-2">
+        <a href="/members/{{ member.id }}/edit" class="btn btn-sm btn-outline">編輯</a>
+        <form method="POST" action="/members/{{ member.id }}/delete" onsubmit="return confirm('確定刪除此會員？此操作不可撤回。')">
+            <button type="submit" class="btn btn-sm btn-error btn-outline">刪除</button>
+        </form>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Profile card -->
+    <div class="card bg-base-100 shadow-md">
+        <div class="card-body">
+            <div class="flex flex-col items-center text-center mb-4">
+                <div class="avatar placeholder mb-3">
+                    <div class="w-20 rounded-full bg-primary/15 text-primary text-2xl font-bold">
+                        <span>{{ member.name_zh[0] }}</span>
+                    </div>
+                </div>
+                <h2 class="text-xl font-bold">{{ member.name_zh }}</h2>
+                <p class="text-base-content/50 text-sm">{{ member.name_en or '' }}</p>
+                <span class="badge mt-2 {% if member.is_active %}badge-success{% else %}badge-ghost{% endif %}">
+                    {% if member.is_active %}活躍{% else %}非活躍{% endif %}
+                </span>
+            </div>
+            <div class="divider my-2"></div>
+            <div class="space-y-3 text-sm">
+                <div class="flex justify-between"><span class="text-base-content/50">性別</span><span>{{ member.gender
+                        }}</span></div>
+                <div class="flex justify-between"><span class="text-base-content/50">年齡</span><span>{{ member.age or '–'
+                        }} 歲</span></div>
+                <div class="flex justify-between"><span class="text-base-content/50">出生日期</span><span>{{
+                        member.dob.strftime('%Y-%m-%d') if member.dob else '–' }}</span></div>
+                <div class="flex justify-between"><span class="text-base-content/50">電話</span><span class="font-mono">{{
+                        member.phone or '–' }}</span></div>
+                <div class="flex justify-between"><span class="text-base-content/50">入會日期</span><span>{{
+                        member.joined_date.strftime('%Y-%m-%d') if member.joined_date else '–' }}</span></div>
+            </div>
+            <div class="divider my-2"></div>
+            <div class="text-sm">
+                <p class="text-base-content/50 mb-1">地址</p>
+                <p class="text-base-content leading-relaxed">{{ member.address or '未填寫' }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right column: health, emergency, tabs -->
+    <div class="lg:col-span-2 space-y-6">
+        <!-- Health & special needs -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="card bg-base-100 shadow-sm">
+                <div class="card-body p-4">
+                    <h3 class="font-semibold text-sm text-base-content/70 mb-2">身體狀況</h3>
+                    <p class="text-sm">{{ member.health_condition or '無記錄' }}</p>
+                </div>
+            </div>
+            <div class="card bg-base-100 shadow-sm">
+                <div class="card-body p-4">
+                    <h3 class="font-semibold text-sm text-base-content/70 mb-2">特殊需要</h3>
+                    <p class="text-sm">{{ member.special_needs or '無' }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Emergency contact -->
+        {% set ec = member.emergency_contact %}
+        {% if ec and ec.name %}
+        <div class="card bg-warning/10 border border-warning/30 shadow-sm">
+            <div class="card-body p-4">
+                <h3 class="font-semibold text-sm text-warning-content mb-2">🆘 緊急聯絡人</h3>
+                <div class="flex gap-6 text-sm">
+                    <div><span class="text-base-content/50">姓名：</span>{{ ec.name }}</div>
+                    <div><span class="text-base-content/50">關係：</span>{{ ec.relation }}</div>
+                    <div><span class="text-base-content/50">電話：</span><span class="font-mono">{{ ec.phone }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Tabs: activity history + respite records -->
+        <div class="card bg-base-100 shadow-md" x-data="{ tab: 'activities' }">
+            <div class="card-body">
+                <div class="tabs tabs-boxed inline-flex mb-4">
+                    <button class="tab" :class="tab === 'activities' ? 'tab-active' : ''" @click="tab = 'activities'">
+                        活動歷史 ({{ member.registrations | length }})
+                    </button>
+                    <button class="tab" :class="tab === 'respite' ? 'tab-active' : ''" @click="tab = 'respite'">
+                        暫託記錄 ({{ member.respite_services | length }})
+                    </button>
+                </div>
+
+                <!-- Activity history -->
+                <div x-show="tab === 'activities'">
+                    {% if member.registrations %}
+                    <div class="overflow-x-auto">
+                        <table class="table table-sm w-full">
+                            <thead>
+                                <tr class="text-base-content/50 text-xs">
+                                    <th>活動名稱</th>
+                                    <th>日期</th>
+                                    <th>出席狀態</th>
+                                    <th>反饋</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for reg in member.registrations | sort(attribute='registered_at', reverse=True) %}
+                                <tr class="hover">
+                                    <td class="font-medium text-sm">
+                                        <a href="/activities/{{ reg.activity_id }}" class="link link-hover">{{
+                                            reg.activity.name }}</a>
+                                    </td>
+                                    <td class="text-xs text-base-content/50">{{
+                                        reg.activity.datetime_start.strftime('%Y-%m-%d') }}</td>
+                                    <td>
+                                        <span class="badge badge-xs
+                      {% if reg.attendance.value == '已出席' %}badge-success
+                      {% elif reg.attendance.value == '缺席' %}badge-error
+                      {% elif reg.attendance.value == '已取消' %}badge-ghost
+                      {% else %}badge-primary{% endif %}">
+                                            {{ reg.attendance.value }}
+                                        </span>
+                                    </td>
+                                    <td class="text-xs text-base-content/50 max-w-xs truncate">{{ reg.feedback or '–' }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-base-content/40 text-sm text-center py-6">尚無活動報名記錄</p>
+                    {% endif %}
+                </div>
+
+                <!-- Respite records -->
+                <div x-show="tab === 'respite'" x-cloak>
+                    {% if member.respite_services %}
+                    <div class="overflow-x-auto">
+                        <table class="table table-sm w-full">
+                            <thead>
+                                <tr class="text-base-content/50 text-xs">
+                                    <th>日期</th>
+                                    <th>時段</th>
+                                    <th>狀態</th>
+                                    <th>備註</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for rs in member.respite_services | sort(attribute='date', reverse=True) %}
+                                <tr class="hover">
+                                    <td class="text-sm">{{ rs.date.strftime('%Y-%m-%d') }}</td>
+                                    <td class="text-sm">{{ rs.session.value }}</td>
+                                    <td>
+                                        <span class="badge badge-xs
+                      {% if rs.status.value == '已批准' %}badge-success
+                      {% elif rs.status.value == '已拒絕' %}badge-error
+                      {% else %}badge-warning{% endif %}">
+                                            {{ rs.status.value }}
+                                        </span>
+                                    </td>
+                                    <td class="text-xs text-base-content/50">{{ rs.notes or '–' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <p class="text-base-content/40 text-sm text-center py-6">尚無暫託記錄</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {% if member.notes %}
+        <div class="alert alert-info text-sm">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+                <p class="font-semibold">備註</p>
+                <p>{{ member.notes }}</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

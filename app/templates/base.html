@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-Hant" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}長者中心 CRM{% endblock %}</title>
+  <!-- Tailwind + daisyUI -->
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.23/dist/full.min.css" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- HTMX -->
+  <script src="https://unpkg.com/htmx.org@1.9.12"></script>
+  <!-- Alpine.js -->
+  <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    [x-cloak] { display: none !important; }
+    .sidebar-link { @apply flex items-center gap-3 px-4 py-3 rounded-xl text-base-content/70 hover:bg-primary/10 hover:text-primary transition-all duration-200 font-medium; }
+    .sidebar-link.active { @apply bg-primary/15 text-primary font-semibold; }
+    .htmx-indicator { opacity: 0; transition: opacity 200ms ease-in; }
+    .htmx-request .htmx-indicator { opacity: 1; }
+    .htmx-request.htmx-indicator { opacity: 1; }
+  </style>
+</head>
+<body class="min-h-screen bg-base-200">
+
+<!-- Toast container -->
+<div id="toast-container" class="toast toast-top toast-end z-50 pointer-events-none" aria-live="polite"></div>
+
+<div class="flex h-screen overflow-hidden">
+  <!-- Sidebar -->
+  <aside class="w-72 bg-base-100 border-r border-base-300 flex flex-col shadow-xl z-20 flex-shrink-0">
+    <!-- Logo / Centre Info -->
+    <div class="px-6 py-6 border-b border-base-300 bg-gradient-to-br from-primary/10 to-secondary/5">
+      <div class="flex items-center gap-3 mb-2">
+        <div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white font-bold text-lg shadow">樂</div>
+        <div>
+          <h1 class="font-bold text-base leading-tight text-base-content">快樂長者中心</h1>
+          <p class="text-xs text-base-content/50">CRM 管理系統</p>
+        </div>
+      </div>
+    </div>
+    <!-- Nav links -->
+    <nav class="flex-1 px-4 py-5 space-y-1 overflow-y-auto">
+      <p class="text-xs font-semibold text-base-content/40 uppercase tracking-widest px-4 mb-3">主要功能</p>
+      <a href="/dashboard" class="sidebar-link {% if request.url.path == '/dashboard' %}active{% endif %}">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+        儀表板
+      </a>
+      <a href="/members/" class="sidebar-link {% if '/members' in request.url.path %}active{% endif %}">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+        會員管理
+      </a>
+      <a href="/activities/" class="sidebar-link {% if '/activities' in request.url.path %}active{% endif %}">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+        活動管理
+      </a>
+      <a href="/respite/" class="sidebar-link {% if '/respite' in request.url.path %}active{% endif %}">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+        暫託服務
+      </a>
+      <a href="/notifications/" class="sidebar-link {% if '/notifications' in request.url.path %}active{% endif %}">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+        通知管理
+      </a>
+    </nav>
+    <!-- Sidebar footer -->
+    <div class="px-4 py-4 border-t border-base-300 text-xs text-base-content/40 text-center">
+      快樂長者中心 CRM v1.0
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <div class="flex-1 flex flex-col overflow-hidden">
+    <!-- Top bar -->
+    <header class="bg-base-100 border-b border-base-300 px-8 py-4 flex items-center justify-between shadow-sm flex-shrink-0">
+      <h2 class="text-xl font-bold text-base-content">{% block page_title %}Untitled{% endblock %}</h2>
+      <div class="flex items-center gap-3">
+        <span class="text-sm text-base-content/50">{{ now().strftime('%Y年%m月%d日') if now is defined else '' }}</span>
+        <div class="badge badge-primary badge-outline text-xs">職員模式</div>
+      </div>
+    </header>
+    <!-- Page content -->
+    <main class="flex-1 overflow-y-auto p-8">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+<script>
+  // Auto-dismiss toasts
+  document.body.addEventListener('htmx:afterSwap', function(e) {
+    const toasts = document.querySelectorAll('.alert[data-auto-dismiss]');
+    toasts.forEach(t => {
+      setTimeout(() => t.remove(), 4000);
+    });
+  });
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

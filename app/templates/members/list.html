@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}會員管理 – 長者中心 CRM{% endblock %}
+{% block page_title %}會員管理{% endblock %}
+
+{% block content %}
+<!-- Toolbar -->
+<div class="flex flex-col sm:flex-row gap-3 mb-6 items-start sm:items-center justify-between">
+    <!-- Live search w/ HTMX -->
+    <div class="flex gap-3 flex-wrap items-center flex-1">
+        <div class="relative">
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-base-content/40" fill="none"
+                viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <input type="search" name="q" value="{{ q }}" placeholder="搜尋姓名、電話…"
+                class="input input-bordered input-sm pl-9 w-60" hx-get="/members/"
+                hx-trigger="input changed delay:350ms, search" hx-target="#members-list" hx-swap="innerHTML"
+                hx-include="[name='status']" hx-indicator="#search-spinner" />
+        </div>
+        <select name="status" class="select select-bordered select-sm" hx-get="/members/" hx-trigger="change"
+            hx-target="#members-list" hx-swap="innerHTML" hx-include="[name='q']">
+            <option value="all" {% if status=='all' %}selected{% endif %}>全部狀態</option>
+            <option value="active" {% if status=='active' %}selected{% endif %}>活躍</option>
+            <option value="inactive" {% if status=='inactive' %}selected{% endif %}>非活躍</option>
+        </select>
+        <span class="loading loading-spinner loading-xs htmx-indicator" id="search-spinner"></span>
+    </div>
+    <a href="/members/new" class="btn btn-primary btn-sm gap-2">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg>
+        新增會員
+    </a>
+</div>
+
+<!-- Table (HTMX target) -->
+<div class="card bg-base-100 shadow-md">
+    <div class="card-body p-0" id="members-list">
+        {% include "partials/members_table.html" %}
+    </div>
+</div>
+{% endblock %}

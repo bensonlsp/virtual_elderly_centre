@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}{{ '編輯會員' if member else '新增會員' }} – 長者中心 CRM{% endblock %}
+{% block page_title %}{{ '編輯會員' if member else '新增會員' }}{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    <div class="flex items-center gap-3 mb-6">
+        <a href="{{ '/members/' + member.id|string if member else '/members/' }}" class="btn btn-sm btn-ghost">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+            返回
+        </a>
+    </div>
+
+    <form method="POST" action="{{ action }}" class="space-y-6">
+        <!-- Basic info -->
+        <div class="card bg-base-100 shadow-md">
+            <div class="card-body">
+                <h3 class="card-title text-base mb-4">基本資料</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">中文姓名 <span
+                                    class="text-error">*</span></span></label>
+                        <input type="text" name="name_zh" class="input input-bordered" required
+                            value="{{ member.name_zh if member else '' }}" />
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">英文姓名</span></label>
+                        <input type="text" name="name_en" class="input input-bordered"
+                            value="{{ member.name_en if member else '' }}" />
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">出生日期</span></label>
+                        <input type="date" name="dob" class="input input-bordered"
+                            value="{{ member.dob.strftime('%Y-%m-%d') if member and member.dob else '' }}" />
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">性別</span></label>
+                        <select name="gender" class="select select-bordered">
+                            {% for g in ['男', '女', '未知'] %}
+                            <option value="{{ g }}" {% if member and member.gender==g %}selected{% endif %}>{{ g }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">電話</span></label>
+                        <input type="text" name="phone" class="input input-bordered"
+                            value="{{ member.phone if member else '' }}" />
+                    </div>
+                    {% if member %}
+                    <div class="form-control">
+                        <label class="label cursor-pointer justify-start gap-3">
+                            <input type="checkbox" name="is_active" class="checkbox checkbox-primary" {% if
+                                member.is_active %}checked{% endif %} />
+                            <span class="label-text font-medium">活躍會員</span>
+                        </label>
+                    </div>
+                    {% endif %}
+                    <div class="form-control sm:col-span-2">
+                        <label class="label"><span class="label-text font-medium">地址</span></label>
+                        <input type="text" name="address" class="input input-bordered"
+                            value="{{ member.address if member else '' }}" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Health info -->
+        <div class="card bg-base-100 shadow-md">
+            <div class="card-body">
+                <h3 class="card-title text-base mb-4">健康資料</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">身體狀況</span></label>
+                        <textarea name="health_condition" class="textarea textarea-bordered h-24"
+                            placeholder="如：高血壓、糖尿病…">{{ member.health_condition if member else '' }}</textarea>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">特殊需要</span></label>
+                        <textarea name="special_needs" class="textarea textarea-bordered h-24"
+                            placeholder="如：需要輪椅、對某食物過敏…">{{ member.special_needs if member else '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Emergency contact -->
+        <div class="card bg-base-100 shadow-md">
+            <div class="card-body">
+                <h3 class="card-title text-base mb-4">緊急聯絡人</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {% set ec = member.emergency_contact if member else {} %}
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">姓名</span></label>
+                        <input type="text" name="ec_name" class="input input-bordered"
+                            value="{{ ec.name if ec else '' }}" />
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">電話</span></label>
+                        <input type="text" name="ec_phone" class="input input-bordered font-mono"
+                            value="{{ ec.phone if ec else '' }}" />
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">關係</span></label>
+                        <input type="text" name="ec_relation" class="input input-bordered"
+                            value="{{ ec.relation if ec else '' }}" placeholder="如：子女、配偶…" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="card bg-base-100 shadow-md">
+            <div class="card-body">
+                <h3 class="card-title text-base mb-4">備註</h3>
+                <textarea name="notes" class="textarea textarea-bordered w-full h-20"
+                    placeholder="其他備註…">{{ member.notes if member else '' }}</textarea>
+            </div>
+        </div>
+
+        <!-- Submit -->
+        <div class="flex justify-end gap-3">
+            <a href="{{ '/members/' + member.id|string if member else '/members/' }}" class="btn btn-ghost">取消</a>
+            <button type="submit" class="btn btn-primary">
+                {{ '儲存更改' if member else '建立會員' }}
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

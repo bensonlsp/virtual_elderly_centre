@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}{{ '編輯活動' if activity else '新增活動' }} – 長者中心 CRM{% endblock %}
+{% block page_title %}{{ '編輯活動' if activity else '新增活動' }}{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <a href="{{ '/activities/' + activity.id|string if activity else '/activities/' }}"
+        class="btn btn-sm btn-ghost mb-6">返回</a>
+
+    <form method="POST" action="{{ action }}" class="card bg-base-100 shadow-md">
+        <div class="card-body space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="form-control sm:col-span-2">
+                    <label class="label"><span class="label-text font-medium">活動名稱 <span
+                                class="text-error">*</span></span></label>
+                    <input type="text" name="name" class="input input-bordered" required
+                        value="{{ activity.name if activity else '' }}" />
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text font-medium">活動類型 <span
+                                class="text-error">*</span></span></label>
+                    <select name="type" class="select select-bordered" required>
+                        {% for t in ActivityType %}
+                        <option value="{{ t.value }}" {% if activity and activity.type==t %}selected{% endif %}>{{
+                            t.value }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text font-medium">狀態</span></label>
+                    <select name="status" class="select select-bordered">
+                        {% for s in ActivityStatus %}
+                        <option value="{{ s.value }}" {% if activity and activity.status==s %}selected{% endif %}>{{
+                            s.value }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text font-medium">開始時間 <span
+                                class="text-error">*</span></span></label>
+                    <input type="datetime-local" name="datetime_start" class="input input-bordered" required
+                        value="{{ activity.datetime_start.strftime('%Y-%m-%dT%H:%M') if activity else '' }}" />
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text font-medium">結束時間</span></label>
+                    <input type="datetime-local" name="datetime_end" class="input input-bordered"
+                        value="{{ activity.datetime_end.strftime('%Y-%m-%dT%H:%M') if activity and activity.datetime_end else '' }}" />
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text font-medium">地點</span></label>
+                    <input type="text" name="location" class="input input-bordered"
+                        value="{{ activity.location if activity else '' }}" />
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text font-medium">名額上限</span></label>
+                    <input type="number" name="capacity" class="input input-bordered" min="1"
+                        value="{{ activity.capacity if activity else 20 }}" />
+                </div>
+                <div class="form-control sm:col-span-2">
+                    <label class="label"><span class="label-text font-medium">收費 (HKD，0 = 免費)</span></label>
+                    <input type="number" name="fee" class="input input-bordered" min="0" step="10"
+                        value="{{ activity.fee if activity else 0 }}" />
+                </div>
+                <div class="form-control sm:col-span-2">
+                    <label class="label"><span class="label-text font-medium">描述</span></label>
+                    <textarea name="description"
+                        class="textarea textarea-bordered h-24">{{ activity.description if activity else '' }}</textarea>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 pt-2">
+                <a href="{{ '/activities/' + activity.id|string if activity else '/activities/' }}"
+                    class="btn btn-ghost">取消</a>
+                <button type="submit" class="btn btn-primary">{{ '儲存更改' if activity else '建立活動' }}</button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

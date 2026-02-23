@@ -1,0 +1,21 @@
+<!-- Partial: respite slots (inline or HTMX swap) -->
+<div class="space-y-3">
+    {% for session_name, info in today_slots.items() %}
+    <div class="flex items-center justify-between p-3 bg-base-200 rounded-xl">
+        <div>
+            <p class="font-semibold text-sm">{{ session_name }}</p>
+            <p class="text-xs text-base-content/50">已用 {{ info.used }} / {{ info.capacity }} 位</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <div class="radial-progress text-sm
+        {% if info.remaining == 0 %}text-error
+        {% elif info.remaining <= 2 %}text-warning
+        {% else %}text-success{% endif %}"
+                style="--value:{{ (info.used / info.capacity * 100) | int }}; --size:3rem; --thickness:4px;">
+                {{ info.remaining }}
+            </div>
+            <span class="text-xs text-base-content/50">剩餘</span>
+        </div>
+    </div>
+    {% endfor %}
+</div>

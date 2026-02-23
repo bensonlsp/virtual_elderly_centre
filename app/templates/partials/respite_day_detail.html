@@ -1,0 +1,88 @@
+<!-- Partial: respite day detail (loaded into modal via HTMX) -->
+<div class="flex items-start justify-between mb-1">
+    <h3 class="font-bold text-lg">
+        {{ query_date.strftime('%Y年%m月%d日') }}
+        <span class="ml-1 badge badge-outline">{{ session_label }}</span>
+    </h3>
+</div>
+<p class="text-sm text-base-content/60 mb-5">
+    已用 <span class="font-semibold text-base-content">{{ capacity - remaining }}</span> /
+    {{ capacity }} 位 ·
+    {% if remaining == 0 %}
+    <span class="text-error font-semibold">名額已滿</span>
+    {% elif remaining <= 1 %}
+    <span class="text-warning font-semibold">剩餘 {{ remaining }} 位</span>
+    {% else %}
+    <span class="text-success font-semibold">剩餘 {{ remaining }} 位</span>
+    {% endif %}
+</p>
+
+{% if approved %}
+<h4 class="text-sm font-semibold text-success mb-2 flex items-center gap-1">
+    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+    </svg>
+    已批准（{{ approved | length }}）
+</h4>
+<div class="space-y-1.5 mb-5">
+    {% for rec in approved %}
+    <div class="flex items-center justify-between px-3 py-2 bg-success/10 rounded-lg">
+        <div class="min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+                <a href="/members/{{ rec.member_id }}" class="font-medium text-sm link link-hover">
+                    {{ rec.member.name_zh }}
+                </a>
+                <span class="badge badge-xs badge-outline">{{ rec.session.value }}</span>
+            </div>
+            {% if rec.notes %}
+            <p class="text-xs text-base-content/50 mt-0.5 truncate">{{ rec.notes }}</p>
+            {% endif %}
+        </div>
+        <a href="/respite/{{ rec.id }}/edit" class="btn btn-xs btn-ghost flex-shrink-0 ml-2">編輯</a>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if pending %}
+<h4 class="text-sm font-semibold text-warning mb-2 flex items-center gap-1">
+    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+    待處理（{{ pending | length }}）
+</h4>
+<div class="space-y-1.5 mb-2">
+    {% for rec in pending %}
+    <div class="flex items-center justify-between px-3 py-2 bg-warning/10 rounded-lg">
+        <div class="min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+                <a href="/members/{{ rec.member_id }}" class="font-medium text-sm link link-hover">
+                    {{ rec.member.name_zh }}
+                </a>
+                <span class="badge badge-xs badge-outline">{{ rec.session.value }}</span>
+            </div>
+            {% if rec.notes %}
+            <p class="text-xs text-base-content/50 mt-0.5 truncate">{{ rec.notes }}</p>
+            {% endif %}
+        </div>
+        <div class="flex gap-1 flex-shrink-0 ml-2">
+            <form method="POST" action="/respite/{{ rec.id }}/approve">
+                <button class="btn btn-xs btn-success">批准</button>
+            </form>
+            <a href="/respite/{{ rec.id }}/edit" class="btn btn-xs btn-ghost">編輯</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if not approved and not pending %}
+<div class="text-center py-8 text-base-content/40">
+    <svg class="w-10 h-10 mx-auto mb-2 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+    </svg>
+    <p class="text-sm">此時段暫無預約</p>
+</div>
+{% endif %}

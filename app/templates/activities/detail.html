@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block title %}{{ activity.name }} – 活動詳情{% endblock %}
+{% block page_title %}活動詳情{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <a href="/activities/" class="btn btn-sm btn-ghost gap-1">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>返回
+    </a>
+    <div class="flex gap-2">
+        <a href="/activities/{{ activity.id }}/edit" class="btn btn-sm btn-outline">編輯</a>
+        <form method="POST" action="/activities/{{ activity.id }}/delete" onsubmit="return confirm('確定刪除此活動？')">
+            <button class="btn btn-sm btn-error btn-outline">刪除</button>
+        </form>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Info card -->
+    <div class="card bg-base-100 shadow-md">
+        <div class="card-body">
+            <div class="flex items-start justify-between mb-2">
+                <h2 class="text-xl font-bold flex-1">{{ activity.name }}</h2>
+                <span class="badge badge-sm ml-2
+          {% if activity.status.value == '已完成' %}badge-ghost
+          {% elif activity.status.value == '進行中' %}badge-warning
+          {% elif activity.status.value == '已取消' %}badge-error
+          {% else %}badge-primary{% endif %}">{{ activity.status.value }}</span>
+            </div>
+            <div class="badge badge-outline badge-sm">{{ activity.type.value }}</div>
+            <div class="divider my-2"></div>
+            <div class="space-y-3 text-sm">
+                <div class="flex gap-2 items-start">
+                    <svg class="w-4 h-4 text-base-content/40 mt-0.5" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <div>
+                        <p>{{ activity.datetime_start.strftime('%Y年%m月%d日 %H:%M') }}</p>
+                        {% if activity.datetime_end %}<p class="text-base-content/50 text-xs">至 {{
+                            activity.datetime_end.strftime('%H:%M') }}</p>{% endif %}
+                    </div>
+                </div>
+                <div class="flex gap-2 items-center">
+                    <svg class="w-4 h-4 text-base-content/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    </svg>
+                    {{ activity.location or '未定' }}
+                </div>
+                <div class="flex gap-2 items-center">
+                    <svg class="w-4 h-4 text-base-content/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    {{ activity.registered_count }}/{{ activity.capacity }} 人已報名
+                </div>
+                <div class="flex gap-2 items-center">
+                    <svg class="w-4 h-4 text-base-content/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span class="{% if activity.fee == 0 %}text-success font-semibold{% endif %}">{{ '免費' if
+                        activity.fee == 0 else '$%.0f' % activity.fee }}</span>
+                </div>
+            </div>
+            <div class="divider my-2"></div>
+            <div>
+                <p class="text-xs text-base-content/50 mb-1">名額使用</p>
+                <progress class="progress progress-primary w-full" value="{{ activity.registered_count }}"
+                    max="{{ activity.capacity }}"></progress>
+                <p class="text-xs text-right text-base-content/40 mt-1">剩餘 {{ activity.remaining_slots }} 位</p>
+            </div>
+            {% if activity.description %}
+            <div class="divider my-2"></div>
+            <p class="text-sm text-base-content/60">{{ activity.description }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Right: register + registrations list -->
+    <div class="lg:col-span-2 space-y-5">
+        <!-- Add registration -->
+        {% if activity.status.value not in ['已完成', '已取消'] and activity.remaining_slots > 0 %}
+        <div class="card bg-base-100 shadow-md">
+            <div class="card-body p-5">
+                <h3 class="font-semibold mb-3">新增報名</h3>
+                <form method="POST" action="/activities/{{ activity.id }}/register" class="flex gap-3">
+                    <select name="member_id" class="select select-bordered flex-1" required>
+                        <option value="">── 選擇會員 ──</option>
+                        {% for m in available_members %}
+                        <option value="{{ m.id }}">{{ m.name_zh }} ({{ m.phone or '–' }})</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-primary">報名</button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Registrations table -->
+        <div class="card bg-base-100 shadow-md">
+            <div class="card-body p-5">
+                <h3 class="font-semibold mb-3">報名名單 ({{ activity.registrations | length }})</h3>
+                {% if activity.registrations %}
+                <div class="overflow-x-auto">
+                    <table class="table table-sm w-full">
+                        <thead>
+                            <tr class="text-base-content/50 text-xs">
+                                <th>會員</th>
+                                <th>報名時間</th>
+                                <th>出席狀態</th>
+                                <th>反饋</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for reg in activity.registrations %}
+                            <tr class="hover">
+                                <td>
+                                    <a href="/members/{{ reg.member_id }}"
+                                        class="link link-hover font-medium text-sm">{{ reg.member.name_zh }}</a>
+                                    <p class="text-xs text-base-content/40">{{ reg.member.phone or '' }}</p>
+                                </td>
+                                <td class="text-xs text-base-content/50">{{ reg.registered_at.strftime('%m-%d %H:%M') }}
+                                </td>
+                                <td>
+                                    <span class="badge badge-xs
+                    {% if reg.attendance.value == '已出席' %}badge-success
+                    {% elif reg.attendance.value == '缺席' %}badge-error
+                    {% elif reg.attendance.value == '已取消' %}badge-ghost
+                    {% else %}badge-primary{% endif %}">{{ reg.attendance.value }}</span>
+                                </td>
+                                <td class="text-xs text-base-content/50 max-w-xs truncate">{{ reg.feedback or '–' }}
+                                </td>
+                                <td>
+                                    <button class="btn btn-xs btn-ghost"
+                                        onclick="document.getElementById('attend-modal-{{ reg.id }}').showModal()">更新</button>
+                                    <!-- Attendance modal -->
+                                    <dialog id="attend-modal-{{ reg.id }}" class="modal">
+                                        <div class="modal-box">
+                                            <h3 class="font-bold text-lg mb-4">更新出席狀態 – {{ reg.member.name_zh }}</h3>
+                                            <form method="POST"
+                                                action="/activities/{{ activity.id }}/registrations/{{ reg.id }}/attendance">
+                                                <div class="form-control mb-3">
+                                                    <label class="label"><span class="label-text">出席狀態</span></label>
+                                                    <select name="attendance" class="select select-bordered">
+                                                        {% for s in AttendanceStatus %}
+                                                        <option value="{{ s.value }}" {% if reg.attendance==s
+                                                            %}selected{% endif %}>{{ s.value }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                                <div class="form-control mb-4">
+                                                    <label class="label"><span class="label-text">反饋</span></label>
+                                                    <textarea name="feedback" class="textarea textarea-bordered"
+                                                        rows="2">{{ reg.feedback or '' }}</textarea>
+                                                </div>
+                                                <div class="modal-action">
+                                                    <button type="button" class="btn btn-ghost"
+                                                        onclick="document.getElementById('attend-modal-{{ reg.id }}').close()">取消</button>
+                                                    <button type="submit" class="btn btn-primary">更新</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </dialog>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="text-center text-base-content/40 py-8">尚無報名記錄</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
