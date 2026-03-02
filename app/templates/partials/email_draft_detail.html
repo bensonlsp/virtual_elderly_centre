@@ -1,0 +1,97 @@
+{% set can_edit = draft.status.value == "草稿" %}
+
+{% if saved %}
+<div class="alert alert-success mb-3 py-2 text-sm">草稿已儲存</div>
+{% endif %}
+{% if approved %}
+<div class="alert alert-success mb-3 py-2 text-sm">
+  已批准！電郵將於 5 分鐘後發送至 {{ draft.recipient_email }}
+</div>
+{% endif %}
+{% if sent_now %}
+<div class="alert alert-success mb-3 py-2 text-sm">
+  電郵已立即發送至 {{ draft.recipient_email }}
+</div>
+{% endif %}
+
+<div class="mb-3 flex items-center gap-2">
+  <span class="badge
+    {% if draft.status.value == '草稿' %}badge-warning
+    {% elif draft.status.value == '待發送' %}badge-info
+    {% elif draft.status.value == '已發送' %}badge-success
+    {% else %}badge-error{% endif %}
+  ">{{ draft.status.value }}</span>
+  <span class="text-sm text-base-content/60">
+    會員：{{ draft.member.name_zh }}
+    {% if draft.member.name_en %}（{{ draft.member.name_en }}）{% endif %}
+  </span>
+</div>
+
+{% if can_edit %}
+<form id="draft-edit-form-{{ draft.id }}"
+      hx-post="/notifications/drafts/{{ draft.id }}/edit"
+      hx-target="#draft-modal-content"
+      hx-swap="innerHTML">
+  <div class="form-control mb-3">
+    <label class="label"><span class="label-text font-semibold">收件人電郵</span></label>
+    <input type="email" name="recipient_email" class="input input-bordered input-sm"
+           value="{{ draft.recipient_email or '' }}" required />
+  </div>
+  <div class="form-control mb-3">
+    <label class="label"><span class="label-text font-semibold">主旨</span></label>
+    <input type="text" name="subject" class="input input-bordered input-sm"
+           value="{{ draft.subject }}" required />
+  </div>
+  <div class="form-control mb-4">
+    <label class="label"><span class="label-text font-semibold">內文</span></label>
+    <textarea name="body" class="textarea textarea-bordered text-sm font-mono"
+              rows="10">{{ draft.body }}</textarea>
+  </div>
+  <div class="flex gap-2 flex-wrap">
+    <button type="submit" class="btn btn-sm btn-neutral">儲存草稿</button>
+    <button type="button" class="btn btn-sm btn-success"
+            hx-post="/notifications/drafts/{{ draft.id }}/approve"
+            hx-target="#draft-modal-content"
+            hx-swap="innerHTML">
+      批准並排程發送
+    </button>
+    <button type="button" class="btn btn-sm btn-primary"
+            hx-post="/notifications/drafts/{{ draft.id }}/send-now"
+            hx-target="#draft-modal-content"
+            hx-swap="innerHTML"
+            onclick="return confirm('確定立即發送電郵？')">
+      立即傳送
+    </button>
+    <button type="button" class="btn btn-sm btn-error btn-outline"
+            hx-post="/notifications/drafts/{{ draft.id }}/delete"
+            hx-target="closest tr"
+            hx-swap="outerHTML"
+            hx-on::after-request="document.getElementById('draft-modal').close()">
+      刪除草稿
+    </button>
+  </div>
+</form>
+{% else %}
+<div class="form-control mb-3">
+  <label class="label"><span class="label-text font-semibold">收件人電郵</span></label>
+  <p class="text-sm bg-base-200 rounded p-2">{{ draft.recipient_email or '—' }}</p>
+</div>
+<div class="form-control mb-3">
+  <label class="label"><span class="label-text font-semibold">主旨</span></label>
+  <p class="text-sm bg-base-200 rounded p-2">{{ draft.subject }}</p>
+</div>
+<div class="form-control mb-4">
+  <label class="label"><span class="label-text font-semibold">內文</span></label>
+  <pre class="text-sm bg-base-200 rounded p-3 whitespace-pre-wrap font-sans">{{ draft.body }}</pre>
+</div>
+{% if draft.scheduled_at %}
+<p class="text-sm text-base-content/60">
+  排程發送時間：{{ draft.scheduled_at.strftime('%Y-%m-%d %H:%M') }}
+</p>
+{% endif %}
+{% if draft.sent_at %}
+<p class="text-sm text-base-content/60">
+  實際發送時間：{{ draft.sent_at.strftime('%Y-%m-%d %H:%M') }}
+</p>
+{% endif %}
+{% endif %}

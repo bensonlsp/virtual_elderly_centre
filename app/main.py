@@ -1,14 +1,14 @@
 import os
 import logging
-from datetime import datetime, date, timedelta
-from fastapi import FastAPI, Request
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from sqlalchemy.orm import Session
+from fastapi.responses import RedirectResponse
 from dotenv import load_dotenv
 
-from app.database import engine, Base, SessionLocal
+from app.database import engine, Base
 from app.routers import dashboard, members, activities, respite, notifications
+from app.services.scheduler import start_scheduler, stop_scheduler
 
 load_dotenv()
 logging.basicConfig(
@@ -16,10 +16,18 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 
-# Create all tables
-Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="長者中心 CRM", version="1.0.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    Base.metadata.create_all(bind=engine)
+    start_scheduler()
+    yield
+    # Shutdown
+    stop_scheduler()
+
+
+app = FastAPI(title="長者中心 CRM", version="1.0.0", lifespan=lifespan)
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
@@ -34,5 +42,4 @@ app.include_router(notifications.router, prefix="/notifications", tags=["notific
 
 @app.get("/")
 async def root():
-    from fastapi.responses import RedirectResponse
     return RedirectResponse(url="/dashboard")

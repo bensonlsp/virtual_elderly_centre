@@ -1,72 +1,197 @@
-import os
-from fastapi import APIRouter, Request, BackgroundTasks, Depends, Form
+from datetime import datetime, timedelta
+from fastapi import APIRouter, Request, Depends, Form
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.services.email import (
-    mock_send_email, send_activity_reminder, send_respite_confirmation,
-    get_inactive_members, generate_care_message
-)
+from app.models import EmailDraft, EmailDraftStatus, SystemNotification
+from app.services.email import run_inactive_scan, send_email
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 
+def _get_page_data(db: Session, status_filter: str = "all"):
+    notifications = (
+        db.query(SystemNotification)
+        .order_by(SystemNotification.created_at.desc())
+        .limit(10)
+        .all()
+    )
+    unread_count = db.query(SystemNotification).filter(
+        SystemNotification.is_read == False
+    ).count()
+
+    q = db.query(EmailDraft)
+    if status_filter == "draft":
+        q = q.filter(EmailDraft.status == EmailDraftStatus.draft)
+    elif status_filter == "approved":
+        q = q.filter(EmailDraft.status == EmailDraftStatus.approved)
+    elif status_filter == "sent":
+        q = q.filter(EmailDraft.status == EmailDraftStatus.sent)
+
+    drafts = q.order_by(EmailDraft.created_at.desc()).all()
+
+    counts = {
+        "all": db.query(EmailDraft).count(),
+        "draft": db.query(EmailDraft).filter(EmailDraft.status == EmailDraftStatus.draft).count(),
+        "approved": db.query(EmailDraft).filter(EmailDraft.status == EmailDraftStatus.approved).count(),
+        "sent": db.query(EmailDraft).filter(EmailDraft.status == EmailDraftStatus.sent).count(),
+        "failed": db.query(EmailDraft).filter(EmailDraft.status == EmailDraftStatus.failed).count(),
+    }
+
+    return notifications, unread_count, drafts, counts
+
+
 @router.get("/", response_class=HTMLResponse)
-async def notifications_page(request: Request, db: Session = Depends(get_db)):
-    inactive = get_inactive_members(db, days=30)
-    care_messages = [(m, generate_care_message(m)) for m in inactive]
-    return templates.TemplateResponse("notifications.html", {
-        "request": request,
-        "care_messages": care_messages,
-        "test_email": os.getenv("TEST_EMAIL", "test@example.com"),
-    })
-
-
-@router.post("/send-care-batch", response_class=HTMLResponse)
-async def send_care_batch(
+async def notifications_page(
     request: Request,
-    background_tasks: BackgroundTasks,
+    status: str = "all",
     db: Session = Depends(get_db),
 ):
-    inactive = get_inactive_members(db, days=30)
-    results = []
-
-    def send_all():
-        for member in inactive:
-            msg = generate_care_message(member)
-            result = mock_send_email(
-                to=os.getenv("TEST_EMAIL", "test@example.com"),
-                subject=f"【關懷郵件】{member.name_zh} 您好",
-                body=msg,
-            )
-            results.append(result)
-
-    background_tasks.add_task(send_all)
-
-    return templates.TemplateResponse("partials/notification_toast.html", {
+    notifications, unread_count, drafts, counts = _get_page_data(db, status)
+    return templates.TemplateResponse("notifications.html", {
         "request": request,
-        "message": f"已排程發送 {len(inactive)} 封關懷郵件！請查看伺服器日誌確認發送詳情。",
-        "success": True,
+        "notifications": notifications,
+        "unread_count": unread_count,
+        "drafts": drafts,
+        "counts": counts,
+        "status_filter": status,
     })
 
 
-@router.post("/send-test", response_class=HTMLResponse)
-async def send_test_email(
+@router.post("/scan", response_class=HTMLResponse)
+async def trigger_scan(request: Request, db: Session = Depends(get_db)):
+    count = run_inactive_scan(db)
+    notifications, unread_count, drafts, counts = _get_page_data(db)
+    return templates.TemplateResponse("notifications.html", {
+        "request": request,
+        "notifications": notifications,
+        "unread_count": unread_count,
+        "drafts": drafts,
+        "counts": counts,
+        "status_filter": "all",
+        "scan_result": count,
+    })
+
+
+@router.get("/drafts/{draft_id}/form", response_class=HTMLResponse)
+async def draft_edit_form(
     request: Request,
-    background_tasks: BackgroundTasks,
-    subject: str = Form("測試郵件"),
-    body: str = Form("這是一封來自長者中心 CRM 的測試郵件。"),
+    draft_id: int,
+    db: Session = Depends(get_db),
 ):
-    def _send():
-        mock_send_email(os.getenv("TEST_EMAIL", "test@example.com"), subject, body)
-
-    background_tasks.add_task(_send)
-
-    return templates.TemplateResponse("partials/notification_toast.html", {
+    draft = db.query(EmailDraft).filter(EmailDraft.id == draft_id).first()
+    return templates.TemplateResponse("partials/email_draft_detail.html", {
         "request": request,
-        "message": f"模擬郵件已發送至 {os.getenv('TEST_EMAIL')}！請查看伺服器日誌。",
-        "success": True,
+        "draft": draft,
     })
+
+
+@router.post("/drafts/{draft_id}/edit", response_class=HTMLResponse)
+async def edit_draft(
+    request: Request,
+    draft_id: int,
+    subject: str = Form(...),
+    body: str = Form(...),
+    recipient_email: str = Form(...),
+    db: Session = Depends(get_db),
+):
+    draft = db.query(EmailDraft).filter(EmailDraft.id == draft_id).first()
+    if draft and draft.status == EmailDraftStatus.draft:
+        draft.subject = subject
+        draft.body = body
+        draft.recipient_email = recipient_email
+        db.commit()
+        db.refresh(draft)
+
+    return templates.TemplateResponse("partials/email_draft_detail.html", {
+        "request": request,
+        "draft": draft,
+        "saved": True,
+    })
+
+
+@router.post("/drafts/{draft_id}/approve", response_class=HTMLResponse)
+async def approve_draft(
+    request: Request,
+    draft_id: int,
+    db: Session = Depends(get_db),
+):
+    draft = db.query(EmailDraft).filter(EmailDraft.id == draft_id).first()
+    if draft and draft.status == EmailDraftStatus.draft:
+        draft.status = EmailDraftStatus.approved
+        draft.scheduled_at = datetime.now() + timedelta(minutes=5)
+        db.commit()
+        db.refresh(draft)
+
+    return templates.TemplateResponse("partials/email_draft_detail.html", {
+        "request": request,
+        "draft": draft,
+        "approved": True,
+    })
+
+
+@router.post("/drafts/{draft_id}/send-now", response_class=HTMLResponse)
+async def send_now(
+    request: Request,
+    draft_id: int,
+    db: Session = Depends(get_db),
+):
+    draft = db.query(EmailDraft).filter(EmailDraft.id == draft_id).first()
+    sent = False
+    if draft and draft.status in (EmailDraftStatus.draft, EmailDraftStatus.approved):
+        success = send_email(
+            to=draft.recipient_email,
+            subject=draft.subject,
+            body=draft.body,
+        )
+        if success:
+            draft.status = EmailDraftStatus.sent
+            draft.sent_at = datetime.now()
+            db.commit()
+            db.refresh(draft)
+            sent = True
+
+    return templates.TemplateResponse("partials/email_draft_detail.html", {
+        "request": request,
+        "draft": draft,
+        "sent_now": sent,
+    })
+
+
+@router.post("/drafts/{draft_id}/delete", response_class=HTMLResponse)
+async def delete_draft(
+    request: Request,
+    draft_id: int,
+    db: Session = Depends(get_db),
+):
+    draft = db.query(EmailDraft).filter(EmailDraft.id == draft_id).first()
+    if draft:
+        db.delete(draft)
+        db.commit()
+    # Return empty response – HTMX will remove the row
+    return HTMLResponse("")
+
+
+@router.post("/read/{notif_id}", response_class=HTMLResponse)
+async def mark_read(
+    request: Request,
+    notif_id: int,
+    db: Session = Depends(get_db),
+):
+    notif = db.query(SystemNotification).filter(SystemNotification.id == notif_id).first()
+    if notif:
+        notif.is_read = True
+        db.commit()
+    return HTMLResponse("")
+
+
+@router.post("/read-all", response_class=HTMLResponse)
+async def mark_all_read(request: Request, db: Session = Depends(get_db)):
+    db.query(SystemNotification).filter(
+        SystemNotification.is_read == False
+    ).update({"is_read": True})
+    db.commit()
+    return HTMLResponse("")

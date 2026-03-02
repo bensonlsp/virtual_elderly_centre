@@ -3,27 +3,198 @@
 {% block page_title %}通知管理{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto">
-    <div class="alert alert-info mb-6">
-        <svg class="w-6 h-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <div>
-            <p class="font-semibold">功能開發中</p>
-            <p class="text-sm">電郵通知及排程功能將於下一階段推出。敬請期待！</p>
-        </div>
-    </div>
+<div class="space-y-6">
 
-    <div class="card bg-base-100 shadow-md">
-        <div class="card-body items-center text-center py-16">
-            <svg class="w-20 h-20 text-base-content/20 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
-            <h3 class="text-xl font-bold text-base-content/40">電郵通知功能</h3>
-            <p class="text-base-content/30 text-sm mt-2">模擬電郵發送、關懷訊息排程<br>即將推出</p>
-        </div>
+  {# ── Scan result banner ─────────────────────────────────────── #}
+  {% if scan_result is defined %}
+    {% if scan_result > 0 %}
+    <div class="alert alert-success shadow">
+      <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+      </svg>
+      <span>掃描完成！已為 <strong>{{ scan_result }}</strong> 位非活躍會員生成電郵草稿，請在下方審閱。</span>
     </div>
+    {% else %}
+    <div class="alert alert-info shadow">
+      <svg class="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <span>本週掃描已完成，無需生成新草稿（可能已掃描過或所有會員均活躍）。</span>
+    </div>
+    {% endif %}
+  {% endif %}
+
+  {# ── System notifications ────────────────────────────────────── #}
+  {% if notifications %}
+  <div class="card bg-base-100 shadow-md">
+    <div class="card-body p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-bold text-base flex items-center gap-2">
+          <svg class="w-5 h-5 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+          </svg>
+          系統通知
+          {% if unread_count > 0 %}
+          <span class="badge badge-warning badge-sm">{{ unread_count }} 未讀</span>
+          {% endif %}
+        </h2>
+        {% if unread_count > 0 %}
+        <button class="btn btn-xs btn-ghost"
+                hx-post="/notifications/read-all"
+                hx-swap="none"
+                hx-on::after-request="this.closest('.card').querySelectorAll('.notif-unread').forEach(el => el.classList.remove('notif-unread', 'bg-warning/10'))">
+          全部標為已讀
+        </button>
+        {% endif %}
+      </div>
+      <div class="space-y-2">
+        {% for notif in notifications %}
+        <div id="notif-{{ notif.id }}"
+             class="flex items-start gap-3 p-3 rounded-lg text-sm
+                    {% if not notif.is_read %}bg-warning/10 notif-unread{% else %}bg-base-200/50{% endif %}">
+          <div class="flex-1">
+            <p class="font-semibold">{{ notif.title }}</p>
+            {% if notif.message %}
+            <p class="text-base-content/70 mt-0.5">{{ notif.message }}</p>
+            {% endif %}
+            <p class="text-xs text-base-content/40 mt-1">{{ notif.created_at.strftime('%Y-%m-%d %H:%M') }}</p>
+          </div>
+          {% if not notif.is_read %}
+          <button class="btn btn-xs btn-ghost shrink-0"
+                  hx-post="/notifications/read/{{ notif.id }}"
+                  hx-swap="none"
+                  hx-on::after-request="document.getElementById('notif-{{ notif.id }}').classList.remove('bg-warning/10', 'notif-unread')">
+            ✓
+          </button>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {# ── Controls ────────────────────────────────────────────────── #}
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <h2 class="font-bold text-lg">電郵草稿管理</h2>
+    <form hx-post="/notifications/scan" hx-target="body" hx-swap="outerHTML">
+      <button type="submit" class="btn btn-primary btn-sm gap-2">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+        </svg>
+        立即掃描非活躍會員
+      </button>
+    </form>
+  </div>
+
+  {# ── Filter tabs ─────────────────────────────────────────────── #}
+  <div class="tabs tabs-boxed bg-base-100 shadow-sm p-1 w-fit">
+    <a href="/notifications/?status=all"
+       class="tab {% if status_filter == 'all' %}tab-active{% endif %}">
+      全部 <span class="badge badge-sm ml-1">{{ counts.all }}</span>
+    </a>
+    <a href="/notifications/?status=draft"
+       class="tab {% if status_filter == 'draft' %}tab-active{% endif %}">
+      草稿 <span class="badge badge-warning badge-sm ml-1">{{ counts.draft }}</span>
+    </a>
+    <a href="/notifications/?status=approved"
+       class="tab {% if status_filter == 'approved' %}tab-active{% endif %}">
+      待發送 <span class="badge badge-info badge-sm ml-1">{{ counts.approved }}</span>
+    </a>
+    <a href="/notifications/?status=sent"
+       class="tab {% if status_filter == 'sent' %}tab-active{% endif %}">
+      已發送 <span class="badge badge-success badge-sm ml-1">{{ counts.sent }}</span>
+    </a>
+  </div>
+
+  {# ── Draft list ──────────────────────────────────────────────── #}
+  {% if drafts %}
+  <div class="card bg-base-100 shadow-md overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="table table-sm">
+        <thead>
+          <tr class="bg-base-200 text-xs">
+            <th>會員</th>
+            <th>主旨</th>
+            <th>範本</th>
+            <th>收件人</th>
+            <th>狀態</th>
+            <th>建立時間</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for draft in drafts %}
+          <tr id="draft-row-{{ draft.id }}" class="hover cursor-pointer"
+              hx-get="/notifications/drafts/{{ draft.id }}/form"
+              hx-target="#draft-modal-content"
+              hx-swap="innerHTML"
+              hx-on::after-request="document.getElementById('draft-modal').showModal()">
+            <td class="font-medium">{{ draft.member.name_zh }}</td>
+            <td class="max-w-xs truncate">{{ draft.subject }}</td>
+            <td>
+              <span class="badge badge-ghost badge-sm">
+                {% if draft.template_type == 'health_care' %}健康關懷
+                {% elif draft.template_type == 'new_member' %}新會員
+                {% elif draft.template_type == 'long_absent' %}久未出席
+                {% else %}一般關懷{% endif %}
+              </span>
+            </td>
+            <td class="text-xs text-base-content/60">{{ draft.recipient_email or '—' }}</td>
+            <td>
+              <span class="badge badge-sm
+                {% if draft.status.value == '草稿' %}badge-warning
+                {% elif draft.status.value == '待發送' %}badge-info
+                {% elif draft.status.value == '已發送' %}badge-success
+                {% else %}badge-error{% endif %}">
+                {{ draft.status.value }}
+              </span>
+            </td>
+            <td class="text-xs text-base-content/50">{{ draft.created_at.strftime('%m-%d %H:%M') }}</td>
+            <td>
+              <button class="btn btn-xs btn-ghost" onclick="event.stopPropagation()"
+                      hx-post="/notifications/drafts/{{ draft.id }}/delete"
+                      hx-target="#draft-row-{{ draft.id }}"
+                      hx-swap="outerHTML"
+                      hx-confirm="確認刪除這封草稿？">
+                ✕
+              </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="card bg-base-100 shadow-md">
+    <div class="card-body items-center text-center py-16">
+      <svg class="w-16 h-16 text-base-content/20 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+          d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+      </svg>
+      <p class="text-base-content/40">沒有電郵草稿</p>
+      <p class="text-sm text-base-content/30 mt-1">點擊「立即掃描非活躍會員」生成草稿</p>
+    </div>
+  </div>
+  {% endif %}
+
 </div>
+
+{# ── Draft edit modal ────────────────────────────────────────────── #}
+<dialog id="draft-modal" class="modal">
+  <div class="modal-box max-w-2xl w-full">
+    <form method="dialog">
+      <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+    </form>
+    <h3 class="font-bold text-lg mb-4">電郵草稿詳情</h3>
+    <div id="draft-modal-content">
+      <!-- Loaded via HTMX -->
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>關閉</button></form>
+</dialog>
+
 {% endblock %}

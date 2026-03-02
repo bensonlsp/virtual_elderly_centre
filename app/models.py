@@ -135,3 +135,39 @@ class RespiteService(Base):
     created_at = Column(DateTime, default=datetime.now)
 
     member = relationship("Member", back_populates="respite_services")
+
+
+class EmailDraftStatus(str, enum.Enum):
+    draft = "草稿"
+    approved = "待發送"
+    sent = "已發送"
+    failed = "發送失敗"
+
+
+class EmailDraft(Base):
+    __tablename__ = "email_drafts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    member_id = Column(Integer, ForeignKey("members.id"), nullable=False)
+    subject = Column(String(200), nullable=False)
+    body = Column(Text, nullable=False)
+    template_type = Column(String(50))
+    status = Column(SAEnum(EmailDraftStatus), default=EmailDraftStatus.draft)
+    scheduled_at = Column(DateTime, nullable=True)
+    sent_at = Column(DateTime, nullable=True)
+    recipient_email = Column(String(200))
+    batch_id = Column(String(50), index=True)
+    created_at = Column(DateTime, default=datetime.now)
+
+    member = relationship("Member")
+
+
+class SystemNotification(Base):
+    __tablename__ = "system_notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(200), nullable=False)
+    message = Column(Text)
+    notif_type = Column(String(50))
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.now)

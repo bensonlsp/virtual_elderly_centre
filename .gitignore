@@ -14,3 +14,6 @@ wheels/
 
 # SQLite database
 *.db
+
+# Gmail OAuth2 credentials (contains secrets)
+credentials.json
