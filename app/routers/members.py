@@ -1,7 +1,9 @@
+import csv
+import io
 import json
 from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, Request, Depends, Form, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Request, Depends, Form, HTTPException, UploadFile, File
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
@@ -177,6 +179,80 @@ async def update_member(
         status_code=303,
         headers={"Location": f"/members/{member_id}"},
     )
+
+
+@router.post("/import", response_class=HTMLResponse)
+async def import_members(
+    request: Request,
+    db: Session = Depends(get_db),
+    file: UploadFile = File(...),
+):
+    from datetime import date
+    content = await file.read()
+    try:
+        text = content.decode("utf-8-sig")  # handle BOM from Excel
+    except UnicodeDecodeError:
+        text = content.decode("big5", errors="replace")
+
+    reader = csv.DictReader(io.StringIO(text))
+    imported, skipped, errors = 0, 0, []
+
+    for i, row in enumerate(reader, start=2):  # row 1 is header
+        name_zh = row.get("name_zh", "").strip()
+        if not name_zh:
+            errors.append(f"第 {i} 行：缺少中文姓名，已略過")
+            skipped += 1
+            continue
+
+        # Skip duplicate by phone or name_zh
+        phone = row.get("phone", "").strip()
+        existing = db.query(Member).filter(Member.name_zh == name_zh).first()
+        if not existing and phone:
+            existing = db.query(Member).filter(Member.phone == phone).first()
+        if existing:
+            skipped += 1
+            continue
+
+        def parse_date(val):
+            val = val.strip() if val else ""
+            for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%Y/%m/%d"):
+                try:
+                    return datetime.strptime(val, fmt).date()
+                except ValueError:
+                    continue
+            return None
+
+        def s(key):
+            return (row.get(key) or "").strip()
+
+        member = Member(
+            name_zh=name_zh,
+            name_en=s("name_en"),
+            dob=parse_date(s("dob")),
+            gender=s("gender") or "未知",
+            phone=phone,
+            address=s("address"),
+            health_condition=s("health_condition"),
+            special_needs=s("special_needs"),
+            notes=s("notes"),
+            joined_date=parse_date(s("joined_date")) or date.today(),
+        )
+        member.emergency_contact = {
+            "name": s("ec_name"),
+            "phone": s("ec_phone"),
+            "relation": s("ec_relation"),
+        }
+        db.add(member)
+        imported += 1
+
+    db.commit()
+
+    return templates.TemplateResponse("partials/import_result.html", {
+        "request": request,
+        "imported": imported,
+        "skipped": skipped,
+        "errors": errors,
+    })
 
 
 @router.post("/{member_id}/delete", response_class=HTMLResponse)

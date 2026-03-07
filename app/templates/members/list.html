@@ -26,13 +26,57 @@
         </select>
         <span class="loading loading-spinner loading-xs htmx-indicator" id="search-spinner"></span>
     </div>
-    <a href="/members/new" class="btn btn-primary btn-sm gap-2">
-        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-        </svg>
-        新增會員
-    </a>
+    <div class="flex gap-2">
+        <button class="btn btn-outline btn-sm gap-2" onclick="document.getElementById('import-modal').showModal()">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+            匯入 CSV
+        </button>
+        <a href="/members/new" class="btn btn-primary btn-sm gap-2">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            新增會員
+        </a>
+    </div>
 </div>
+
+{# ── Import CSV modal ─────────────────────────────────────────────── #}
+<dialog id="import-modal" class="modal">
+  <div class="modal-box max-w-lg">
+    <form method="dialog">
+      <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+    </form>
+    <h3 class="font-bold text-lg mb-1">匯入會員 CSV</h3>
+    <p class="text-sm text-base-content/60 mb-4">
+      CSV 欄位：<code class="text-xs bg-base-200 px-1 rounded">name_zh, name_en, dob, gender, phone, address, health_condition, special_needs, ec_name, ec_phone, ec_relation, joined_date, notes</code>
+    </p>
+    <div id="import-modal-content">
+      <form hx-post="/members/import"
+            hx-target="#import-modal-content"
+            hx-swap="innerHTML"
+            hx-encoding="multipart/form-data">
+        <div class="form-control mb-4">
+          <label class="label"><span class="label-text font-semibold">選擇 CSV 檔案</span></label>
+          <input type="file" name="file" accept=".csv" class="file-input file-input-bordered file-input-sm w-full" required />
+        </div>
+        <div class="text-xs text-base-content/50 mb-4 space-y-1">
+          <p>• 重複的會員（相同姓名或電話）會自動略過</p>
+          <p>• 日期格式：YYYY-MM-DD 或 DD/MM/YYYY</p>
+          <p>• 性別填寫：男 / 女 / 未知</p>
+        </div>
+        <div class="flex gap-2">
+          <button type="submit" class="btn btn-primary btn-sm">開始匯入</button>
+          <button type="button" class="btn btn-ghost btn-sm"
+                  onclick="document.getElementById('import-modal').close()">取消</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <form method="dialog" class="modal-backdrop"><button>關閉</button></form>
+</dialog>
 
 <!-- Table (HTMX target) -->
 <div class="card bg-base-100 shadow-md">
